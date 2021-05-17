@@ -68,7 +68,10 @@ encoder = LabelEncoder()
 encoder.fit(y_train)
 encoded_Y = encoder.transform(y_train)
 # convert integers to dummy variables (i.e. one hot encoded)
-y_train = np_utils.to_categorical(encoded_Y)
+y_train_dummy = np_utils.to_categorical(encoded_Y)
+
+rosetta_stone = pd.DataFrame([y_train, encoded_Y])
+rosetta_stone.to_csv("Rosetta Stone.csv")
 
 # Generate Keras CNN model
 model = Sequential()
@@ -89,7 +92,7 @@ model.summary()
 model.compile(optimizer = Adam() , loss = 'categorical_crossentropy' , metrics = ['accuracy'])
 
 # Fit Model
-history = model.fit(x_train, y_train, epochs = 20)
+history = model.fit(x_train, y_train_dummy, epochs = 20)
 
 # Save model
 model.save('my_model')

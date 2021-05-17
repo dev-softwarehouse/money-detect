@@ -3,6 +3,7 @@ from numpy import array
 import pandas as pd
 import numpy as np
 from skimage.metrics import structural_similarity as ssim
+from matplotlib import pyplot
 import cv2
 import os
 
@@ -45,6 +46,7 @@ def flip_correct(images):
         # and flip it back
         if score < 0.6:
             temp = Image.fromarray(images[i])
+            temp = temp.transpose(Image.FLIP_LEFT_RIGHT)
             temp = temp.transpose(Image.FLIP_TOP_BOTTOM)
             images[i] = np.asarray(temp)
     return(images)

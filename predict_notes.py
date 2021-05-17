@@ -53,9 +53,6 @@ combined = zip(labels, final_dirs)
 # Get images array
 final_images_labelled = image_array(combined)
 
-# Convert classes to not take into account left or right (needed for final note count)
-new_labels = [x.replace('dataset cleaned left ', '').replace('dataset cleaned right ', '') for x in labels]
-
 # Load saved CNN model
 model = keras.models.load_model('my_model')
 
@@ -71,15 +68,28 @@ x_predict = np.array(x_predict)/255
 predictions = model.predict(x_predict)
 classes = np.argmax(predictions, axis = 1)
 
+rosetta_stone = pd.read_csv("Rosetta Stone.csv")
+rosetta_stone = rosetta_stone.iloc[:, 1:].transpose()
+rosetta_stone.columns = ["Note", "Class"]
+rosetta_stone.drop_duplicates(inplace=True)
+
 # Convert classes number to note
 pred_notes = []
 for i in classes:
-    pred_notes.append(new_labels[i])
+    temp = rosetta_stone.loc[rosetta_stone["Class"] == str(i)]
+    pred_notes.append(temp["Note"].values.tolist())
+
+new_notes = [str(x).replace('dataset cleaned left ', '').replace('dataset cleaned right ', '') for x in pred_notes]
+
+# Convert classes to not take into account left or right (needed for final note count)
+# new_labels = [x.replace('dataset cleaned left ', '').replace('dataset cleaned right ', '') for x in labels]
+
+new_labels = set(new_notes)
 
 # Convert predicted notes into dictionary with note count (divided by 2 because of left/right)
 count_notes = {}
 for x in new_labels:
-    count_notes.update({x: pred_notes.count(x)/2})
+    count_notes.update({x: new_notes.count(x)/2})
 
 # Save predictions to CSV
 df = pd.DataFrame(list(count_notes.items()),columns = ['Note','Count'])
