@@ -10,6 +10,7 @@ import os
 
 def image_array(file_names):
     '''This loads in all the images and their respective label and stores it as a nested list'''
+    global crop_img_size
     image_array = []
     for i in file_names.iterrows():
         img_file = i[1][0]
@@ -20,20 +21,27 @@ def image_array(file_names):
         if img_size[0] < img_size[1]:
             img = img.rotate(90, expand=True)
         arr = array(img)
-        image_array.append([arr, label])
+        # arr = arr[:, :, ::-1].copy()
+        resized_arr = cv2.resize(arr, [int(crop_img_size[0]), int(crop_img_size[1])])
+        image_array.append([resized_arr, label, img_file])
     return(image_array)
 
 def partition_notes(images_array, notes):
     '''This creates a dictionary with each denomination as a key'''
     ind_notes = []
+    file_key = []
     for z in images_array:
+        print(z[1])
+        print(z[2])
         if z[1] == notes:
             ind_notes.append(z[0])
-    return(ind_notes)
+            file_key.append(z[2])
+    return(ind_notes, file_key)
 
 def flip_correct(images):
     '''This checks if the bills are all the same way around. If they're not, it flips them'''
     for i in range(0, len(images)-1):
+        print(i)
         # Converts numpy to an open CV image
         imageA = images[i][:, :, ::-1].copy()
         imageB = images[i+1][:, :, ::-1].copy()
@@ -64,17 +72,18 @@ def split_left_right(images):
         split_right.append(np.asarray(temp_right))
     return split_left, split_right
 
-def save_images(images, bill, side):
+def save_images(images, bill, side, file_save_name):
     # Function to save all the data
     count = 0
     if not os.path.exists(f"dataset/cleaned/{side}/{bill}"):
         os.makedirs(f"dataset/cleaned/{side}/{bill}")
-    for image in images:
-        count = count + 1
-        image = Image.fromarray(image)
-        image.save(f"dataset/cleaned/{side}/{bill}/{str(count)}.jpg")
+    for i in range(0, len(images)):
+        image = Image.fromarray(images[i])
+        image.save(f"dataset/cleaned/{side}/{bill}/{file_save_name[i]}")
 
 
+# The resized image size, needed for memory size
+crop_img_size = (403, 226)
 
 # Load in all the files using the file name <-> denomination CSV
 file_list = pd.read_csv("dataset_file_names_labelled.csv")
@@ -86,9 +95,13 @@ unique_labels = pd.unique(file_list.iloc[:, 1])
 # Create a dictionary where the images of denominations of the same type
 # are all linked to the key (the key being that denomination)
 separated_notes = dict()
+file_key_names = dict()
 for note in unique_labels:
-    temp_dict = {str(note): partition_notes(images, note)}
-    separated_notes.update(temp_dict)
+    image_arrays, file_names = partition_notes(images, note)
+    temp_dict_img = {str(note): image_arrays}
+    separated_notes.update(temp_dict_img)
+    temp_dict_file = {str(note): file_names}
+    file_key_names.update(temp_dict_file)
 
 # Checks that all the notes are the same way around
 for note in unique_labels:
@@ -113,5 +126,6 @@ for note in unique_labels:
 for note in unique_labels:
     note = str(note)
     if len(separated_notes[note]) > 1:
-        save_images(separated_notes_left[note], note, 'left')
-        save_images(separated_notes_right[note], note, 'right')
+        print(file_key_names[note])
+        save_images(separated_notes_left[note], note, 'left', file_key_names[note])
+        save_images(separated_notes_right[note], note, 'right', file_key_names[note])

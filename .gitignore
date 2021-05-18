@@ -1,7 +1,7 @@
 # Data files to be downloaded locally
 /dataset/cleaned
 /my_model
-
+single_note_predict.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

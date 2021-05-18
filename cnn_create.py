@@ -29,13 +29,13 @@ def image_array(full_zip):
             img = Image.open(file_name)
             open_cv_image = array(img)
             # Convert RGB to BGR
-            open_cv_image = open_cv_image[:, :, ::-1].copy()
+            # open_cv_image = open_cv_image[:, :, ::-1].copy()
             resized_arr = cv2.resize(open_cv_image, [int(img_size[0]), int(img_size[1])])
             image_array.append([resized_arr, label])
     return np.array(image_array)
 
 # The resized image size, needed for memory size
-img_size = (403, 226)
+img_size = (202, 226)
 
 # Finding folder - file structure
 subdirs = [x[0].replace('./', '') for x in os.walk('./dataset')]
@@ -75,7 +75,7 @@ rosetta_stone.to_csv("Rosetta Stone.csv")
 
 # Generate Keras CNN model
 model = Sequential()
-model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(226, 403, 3)))
+model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(img_size[1], img_size[0], 3)))
 model.add(MaxPooling2D((2, 2)))
 model.add(Dropout(0.25))
 model.add(Conv2D(64, kernel_size=(3, 3), activation='relu'))

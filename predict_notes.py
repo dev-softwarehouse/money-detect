@@ -20,6 +20,7 @@ def image_array(full_zip):
     '''This loads in all the images and their respective label and stores it as a nested list'''
     global img_size
     image_array = []
+    image_names = []
     for zip_name in full_zip:
         file_list = os.listdir(zip_name[1])
         for img_file in file_list:
@@ -29,13 +30,14 @@ def image_array(full_zip):
             img = Image.open(file_name)
             open_cv_image = array(img)
             # Convert RGB to BGR
-            open_cv_image = open_cv_image[:, :, ::-1].copy()
+            # open_cv_image = open_cv_image[:, :, ::-1].copy()
             resized_arr = cv2.resize(open_cv_image, [int(img_size[0]), int(img_size[1])])
             image_array.append([resized_arr, label])
-    return np.array(image_array)
+            image_names.append(img_file)
+    return np.array(image_array), np.array(image_names)
 
 # The resized image size, needed for memory size
-img_size = (403, 226)
+img_size = (202, 226)
 
 # Finding folder - file structure
 subdirs = [x[0].replace('./', '') for x in os.walk('./dataset')]
@@ -51,7 +53,7 @@ labels = [x.replace('/dataset/cleaned/', '').replace('/', ' ') for x in final_di
 combined = zip(labels, final_dirs)
 
 # Get images array
-final_images_labelled = image_array(combined)
+final_images_labelled, file_names = image_array(combined)
 
 # Load saved CNN model
 model = keras.models.load_model('my_model')
@@ -64,33 +66,47 @@ for x in final_images_labelled:
 # Normalize the data
 x_predict = np.array(x_predict)/255
 
-# Generate predictions and convert probabilities to predictions
-predictions = model.predict(x_predict)
-classes = np.argmax(predictions, axis = 1)
-
+# Read in the Rosetta Stone to Convert Class to Note
 rosetta_stone = pd.read_csv("Rosetta Stone.csv")
 rosetta_stone = rosetta_stone.iloc[:, 1:].transpose()
 rosetta_stone.columns = ["Note", "Class"]
+
+# Drop Duplicates to get Unique
 rosetta_stone.drop_duplicates(inplace=True)
 
-# Convert classes number to note
-pred_notes = []
-for i in classes:
-    temp = rosetta_stone.loc[rosetta_stone["Class"] == str(i)]
-    pred_notes.append(temp["Note"].values.tolist())
+# Convert class to numeric to sort (so that columns are in the correct order)
+rosetta_stone["Class"] = pd.to_numeric(rosetta_stone["Class"])
+rosetta_stone = rosetta_stone.sort_values("Class")
 
-new_notes = [str(x).replace('dataset cleaned left ', '').replace('dataset cleaned right ', '') for x in pred_notes]
+# Generate predictions and combine half notes into single data frame
+predictions = model.predict(x_predict)
+pred_df = pd.DataFrame(predictions)
 
-# Convert classes to not take into account left or right (needed for final note count)
-# new_labels = [x.replace('dataset cleaned left ', '').replace('dataset cleaned right ', '') for x in labels]
+# Replace column names with those from the Rosetta Stone (removing the preface)
+col_names = [str(x).replace("dataset cleaned left ", "").replace("dataset cleaned right ", "") for x in rosetta_stone["Note"]]
+pred_df.columns = col_names
 
-new_labels = set(new_notes)
+# Insert the file names for later referencing
+pred_df.insert(0, "File Names", file_names)
 
-# Convert predicted notes into dictionary with note count (divided by 2 because of left/right)
-count_notes = {}
-for x in new_labels:
-    count_notes.update({x: new_notes.count(x)/2})
+# Sort and Group Half Note Predictions into 1 Prediction per Full Note
+pred_df = pred_df.sort_values("File Names")
+pred_df = pred_df.groupby("File Names").sum()
+pred_df = pred_df.groupby(level=0, axis=1).sum()
+pred_df = pred_df/2
 
-# Save predictions to CSV
-df = pd.DataFrame(list(count_notes.items()),columns = ['Note','Count'])
+# Find Most Probable Note and Probability it Exists
+prob_note = pred_df.max(axis=1)
+classes = pred_df.idxmax(axis=1)
+
+# Save to CSV
+file_names = np.unique(file_names)
+final_pred_df = pd.DataFrame({"Image": file_names,
+                              "Note Predicted": classes,
+                              "Probability": prob_note})
+final_pred_df.to_csv("Final Predictions.csv")
+
+
+# Save Note Counts to CSV
+df = final_pred_df.value_counts("Note Predicted")
 df.to_csv("Note Count.csv")
