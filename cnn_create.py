@@ -92,7 +92,7 @@ model.summary()
 model.compile(optimizer = Adam() , loss = 'categorical_crossentropy' , metrics = ['accuracy'])
 
 # Fit Model
-history = model.fit(x_train, y_train_dummy, epochs = 20)
+history = model.fit(x_train, y_train_dummy, epochs = 10)
 
 # Save model
 model.save('my_model')

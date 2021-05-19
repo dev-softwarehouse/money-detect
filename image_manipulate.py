@@ -56,7 +56,7 @@ def flip_correct(images):
             temp = Image.fromarray(images[i])
             temp = temp.transpose(Image.FLIP_LEFT_RIGHT)
             temp = temp.transpose(Image.FLIP_TOP_BOTTOM)
-            images[i] = np.asarray(temp)
+            images[i+1] = np.asarray(temp)
     return(images)
 
 def split_left_right(images):

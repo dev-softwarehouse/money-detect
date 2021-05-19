@@ -53,18 +53,29 @@ labels = [x.replace('/dataset/cleaned/', '').replace('/', ' ') for x in final_di
 combined = zip(labels, final_dirs)
 
 # Get images array
-final_images_labelled, file_names = image_array(combined)
+final_images, file_names = image_array(combined)
 
 # Load saved CNN model
 model = keras.models.load_model('my_model')
 
 # Create list with all images to be predicted
 x_predict = []
-for x in final_images_labelled:
+for x in final_images:
     x_predict.append(x[0])
 
 # Normalize the data
 x_predict = np.array(x_predict)/255
+
+# Generate predictions and combine half notes into single data frame
+predictions = model.predict(x_predict)
+pred_df = pd.DataFrame(predictions)
+
+# Replace column names with those from the Rosetta Stone (removing the preface)
+col_names = [str(x).replace("dataset cleaned left ", "").replace("dataset cleaned right ", "") for x in rosetta_stone["Note"]]
+pred_df.columns = col_names
+
+# Insert the file names for later referencing
+pred_df.insert(0, "File Names", file_names)
 
 # Read in the Rosetta Stone to Convert Class to Note
 rosetta_stone = pd.read_csv("Rosetta Stone.csv")
@@ -77,17 +88,6 @@ rosetta_stone.drop_duplicates(inplace=True)
 # Convert class to numeric to sort (so that columns are in the correct order)
 rosetta_stone["Class"] = pd.to_numeric(rosetta_stone["Class"])
 rosetta_stone = rosetta_stone.sort_values("Class")
-
-# Generate predictions and combine half notes into single data frame
-predictions = model.predict(x_predict)
-pred_df = pd.DataFrame(predictions)
-
-# Replace column names with those from the Rosetta Stone (removing the preface)
-col_names = [str(x).replace("dataset cleaned left ", "").replace("dataset cleaned right ", "") for x in rosetta_stone["Note"]]
-pred_df.columns = col_names
-
-# Insert the file names for later referencing
-pred_df.insert(0, "File Names", file_names)
 
 # Sort and Group Half Note Predictions into 1 Prediction per Full Note
 pred_df = pred_df.sort_values("File Names")
